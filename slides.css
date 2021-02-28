@@ -1,0 +1,89 @@
+body {
+    margin: 0;
+    touch-action: none;
+}
+
+#content {
+    font-family: 'Coming Soon', cursive;
+    z-index: 3;
+    margin: 0px 2.5vw;
+}
+
+p {
+    font-size: min(5vh, 5vw);
+    margin-block-start: 0;
+    margin-block-end: 0;
+    margin-left: 2.5vw;
+}
+
+div.slide {
+    animation: fadeIn 1s;
+}
+
+h2.slide-title {
+    font-size: min(10vh, 10vw);
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
+.slide-hidden {
+    display: none;
+}
+
+@keyframes fadeIn {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+#canvas {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    z-index: 3;
+}
+
+div#buttons {
+    position: absolute;
+    z-index: 4;
+    bottom: 1vh;
+    left: 1vw;
+}
+button {
+    border: none;
+    padding: 1vh 1vw;
+    background-color: transparent;
+    color: #cccccc;
+    outline: none;
+    font-size: min(2vh, 2vw)
+}
+
+button:active {
+   background-color: #eeeeee;
+}
+
+.arrow {
+  border: solid #cccccc;
+  border-width: 0 min(.5vw,.5vh) min(.5vw,.5vh) 0;
+  display: inline-block;
+  padding: min(.6vw,.6vh);
+  background-color: transparent;
+  outline: none;
+}
+
+.right {
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+
+.left {
+  transform: rotate(135deg);
+  -webkit-transform: rotate(135deg);
+}
+
+.circle {
+    width: min(2vw, 2vh);
+    height: min(2vw, 2vh);
+    background-color: #ffcccc;
+    border-radius: 50%;
+    display: inline-block;
+}
