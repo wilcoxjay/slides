@@ -20,6 +20,19 @@ div.slide {
     animation: fadeIn 1s;
 }
 
+h1.section-title {
+    font-size: min(15vh, 15vw);
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+h2.section-subtitle {
+    font-size: min(7.5vh, 7.5vw);
+    margin-block-start: 0;
+    margin-block-end: 0;
+}
+
+
+
 h2.slide-title {
     font-size: min(10vh, 10vw);
     margin-block-start: 0;
@@ -27,7 +40,7 @@ h2.slide-title {
 }
 
 .slide-hidden {
-    display: none;
+    display: none !important;
 }
 
 @keyframes fadeIn {

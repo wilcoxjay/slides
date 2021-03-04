@@ -3,10 +3,6 @@ function clearContent() {
     content.innerHTML = ""
 }
 
-
-function titleSlideTitle(text) {
-}
-
 function Slide() {
     this.div = document.createElement("div")
     this.div.classList.add("slide")
@@ -20,6 +16,28 @@ Slide.prototype.show = function() {
 Slide.prototype.hide = function() {
     this.div.classList.add("slide-hidden")
 }
+
+Slide.prototype.section = function(text, subtitle) {
+    let h = document.createElement("h1")
+    h.classList.add("section-title")
+    h.appendChild(document.createTextNode(text))
+    this.div.appendChild(h)
+    this.div.style.display = "flex";
+    this.div.style.flexDirection = "column";
+    this.div.style.justifyContent = "center";
+    this.div.style.alignItems = "center";
+    this.div.style.height = "100%";
+
+    if (subtitle) {
+        h = document.createElement("h2")
+        h.classList.add("section-subtitle")
+        h.appendChild(document.createTextNode(subtitle))
+        this.div.appendChild(h)
+    }
+
+    return this
+}
+
 
 Slide.prototype.title = function(text) {
     let h = document.createElement("h2")
@@ -36,26 +54,6 @@ Slide.prototype.p = function(text) {
     return this
 }
 
-//
-//let slides = [
-//    emptySlide().slideTitle("Hello"),
-//    emptySlide().slideTitle("World"),
-//]
-//
-//function setSlide(slide) {
-//    if (typeof slide === "number") {
-//        slide = slides[slide]
-//    }
-//    clearContent()
-//    let content = document.querySelector("#content")
-//    content.appendChild(slide)
-//}
-//
-//setSlide(1)
-//let content = document.querySelector("#content")
-//window.setTimeout(() => { console.log("hi"); setSlide(slides[0]) }, 1000)
-//setSlide(slides[0])
-
 let slides = []
 
 Slide.prototype.build = function() {
@@ -64,6 +62,10 @@ Slide.prototype.build = function() {
     content.appendChild(this.div)
     return this
 }
+
+new Slide()
+    .section("My Talk", "James Wilcox")
+    .build()
 
 new Slide()
     .title("Hello")
@@ -113,13 +115,49 @@ document.addEventListener('click', (event) => {
 
 let canvas = document.querySelector('#canvas');
 
-// get canvas 2D context and set him correct size
 var ctx = canvas.getContext('2d');
 resize();
 
-// last known position
-var pos = { x: 0, y: 0 };
-var touchStartPos = { x: null, y: null };
+function Point2d(x, y) {
+    this.x = x;
+    this.y = y;
+}
+
+Point2d.prototype.add = function(other) {
+    return new Point2d(this.x + other.x, this.y + other.y)
+}
+Point2d.prototype.sub = function(other) {
+    return new Point2d(this.x - other.x, this.y - other.y)
+}
+Point2d.prototype.distTo = function(other) {
+    return this.sub(other).norm()
+}
+Point2d.prototype.dot = function(other) {
+    return this.x * other.x + this.y * other.y
+}
+Point2d.prototype.norm = function() {
+    return Math.sqrt(this.dot(this))
+}
+// operates on vectors, not points
+Point2d.prototype.cross = function(other) {
+    return this.x * other.y - this.y * other.x
+}
+
+function Line(p0, p1) {
+    this.p0 = p0;
+    this.p1 = p1;
+}
+Line.prototype.perpDist = function(pt) {
+    var v0 = pt.sub(this.p0)
+    var v1 = pt.sub(this.p1)
+    var c = v0.cross(v1)
+    //console.log(v0, v1, c, this.p0.distTo(this.p1))
+    return Math.abs(c) / this.p0.distTo(this.p1)
+}
+
+
+var pos = new Point2d(0, 0)
+var touchStartPos = null
 
 window.addEventListener('resize', resize);
 document.addEventListener('mousemove', draw, {passive:false});
@@ -170,28 +208,29 @@ document.querySelector("#pointer-button").addEventListener("touchmove", (event) 
     pointerMode = !pointerMode
 })
 
+function touchPos(e) {
+    return new Point2d(e.touches[0].clientX, e.touches[0].clientY)
+}
+
 function rememberStart(e) {
     if (e.touches.length == 1) {
-        touchStartPos.x = e.touches[0].clientX
-        touchStartPos.y = e.touches[0].clientY
+        touchStartPos = touchPos(e)
     }
 }
 
 function detectSwipe(e) {
     if (e.touches.length == 1 &&
-        touchStartPos.x !== null && touchStartPos.y !== null) {
+        touchStartPos !== null) {
 
+        // only swipe with finger, not pencil
         if (e.touches[0].touchType === undefined ||
             e.touches[0].touchType === "stylus")
             return;
 
-        var xUp = e.touches[0].clientX;
-        var yUp = e.touches[0].clientY;
-        var xDiff = touchStartPos.x - xUp;
-        var yDiff = touchStartPos.y - yUp;
+        var diff = touchStartPos.sub(touchPos(e))
         //l.innerText = "" + xDiff + ", " + yDiff
-        if (Math.abs(xDiff) > Math.abs(yDiff)) {
-            if (xDiff > 0) {
+        if (Math.abs(diff.x) > Math.abs(diff.y)) {
+            if (diff.x > 0) {
                 /* left swipe */
                 nextSlide()
             } else {
@@ -199,14 +238,13 @@ function detectSwipe(e) {
                 prevSlide()
             }
         } else {
-            if (yDiff > 0) {
+            if (diff.y > 0) {
                 /* up swipe */
             } else {
                 /* down swipe */
             }
         }
-        touchStartPos.x = null;
-        touchStartPos.y = null;
+        touchStartPos = null
     }
 }
 
@@ -215,12 +253,10 @@ function detectSwipe(e) {
 // new position from mouse event
 function setPosition(e) {
     if (e instanceof MouseEvent) {
-        pos.x = e.clientX
-        pos.y = e.clientY
+        pos = new Point2d(e.clientX, e.clientY)
     } else if (e instanceof TouchEvent) {
         if (e.touches.length == 1) {
-            pos.x = e.touches[0].clientX
-            pos.y = e.touches[0].clientY
+            pos = touchPos(e)
         }
     }
 }
@@ -232,6 +268,7 @@ function resize() {
 }
 
 let mycanvas = []
+let mycanvas_nursery = []
 let currentPath = null
 let pointerMode = false
 
@@ -257,10 +294,10 @@ function draw(e) {
     //     window.clearTimeout(timerId)
     // }
     // timerId = window.setTimeout(() => {l.innerText = ""}, 5000)
-    
+
     if (!pointerMode) {
         if (currentPath === null) {
-            currentPath = [[pos.x, pos.y]]
+            currentPath = [pos]
         }
 
         ctx.beginPath() // begin
@@ -269,13 +306,13 @@ function draw(e) {
         ctx.lineCap = 'round'
         ctx.linejoin = 'round'
         ctx.strokeStyle = '#c0392b'
-        ctx.lineWidth = 5
+        ctx.lineWidth = 3
 
         ctx.moveTo(pos.x, pos.y) // from
         setPosition(e)
         ctx.lineTo(pos.x, pos.y) // to
 
-        currentPath.push([pos.x, pos.y])
+        currentPath.push(pos)
         ctx.stroke() // draw it!
     } else {
         setPosition(e)
@@ -286,19 +323,17 @@ function draw(e) {
         ctx.linejoin = 'round'
         ctx.fillStyle = '#c0392b'
         ctx.lineWidth = 0
-        
+
         ctx.moveTo(pos.x, pos.y)
         ctx.arc(pos.x, pos.y, 10, 0, 2 * Math.PI)
         ctx.fill()
     }
-
-
 }
 
 function finishPath() {
     if (currentPath !== null) {
-        console.log("finish")
-        mycanvas.push(currentPath);
+        // console.log("finish")
+        mycanvas_nursery.push(currentPath);
         currentPath = null
         redrawLines()
     }
@@ -309,6 +344,7 @@ function finishPath() {
 
 function clearDrawings() {
     mycanvas = []
+    mycanvas_nursery = []
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 }
 
@@ -318,134 +354,129 @@ function redrawLines() {
     ctx.lineCap = 'round'
     ctx.linejoin = 'round'
     ctx.strokeStyle = '#c0392b'
-    ctx.lineWidth = 5
+    ctx.lineWidth = 3
+
+    for (let path of mycanvas_nursery) {
+        mycanvas.push(robustFilter(path))
+    }
+
     var p = null;
     for (let path of mycanvas) {
-        console.log(path)
-        ctx.moveTo(path[0][0], path[0][1])
+        // console.log(path)
+        ctx.moveTo(path[0].x, path[0].y)
 
         for (var i = 1; i < path.length; i++) {
-            ctx.lineTo(path[i][0], path[i][1])
+            ctx.lineTo(path[i].x, path[i].y)
         }
     }
     ctx.stroke()
+    // redrawPoints()
 }
 
-/*
-var pts;
+function drawPoint(center, r, color) {
+    ctx.beginPath()
+    ctx.fillStyle = color
+    ctx.arc(center.x, center.y, r, 0, 2 * Math.PI)
+    ctx.fill()
+}
 
-function redrawCurved() {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-    console.log(mycanvas)
+function drawPoints(points, r, color) {
+    for (var i = 0; i < points.length; i++) {
+        drawPoint(points[i], r, color)
+    }
+}
+
+function robustFilter(points, eps) {
+    if (eps === undefined) eps = 1.5;
+
+    let splits = splitPointsAway(points)
+        .map((split) => filterPoints(split, eps))
+
+    var result = []
+    for (var i = 0; i < splits.length; i++) {
+        for (var j = 0; j < splits[i].length; j++) {
+            if (i != 0 && j == 0) continue
+            result.push(splits[i][j])
+        }
+    }
+    return result
+}
+
+function redrawPoints() {
     for (let path of mycanvas) {
-        pts = []
-        for (let pt of path) {
-            pts.push(pt[0])
-            pts.push(pt[1])
+        drawPoints(path, 3, '#000000')
+    }
+}
+
+function splitPointsAway(points, eps) {
+    if (points.length < 2) {
+        return [points]
+    }
+    if (eps === undefined) {
+        eps = .5
+    }
+
+    var result = []
+    var current = [points[0], points[1]]
+    var i = 2
+    while (i < points.length) {
+        if (current[0].distTo(points[i]) + eps > current[0].distTo(current[current.length-1])) {
+            current.push(points[i])
+        } else {
+            current.push(points[i])
+            i++
+            if (i < points.length) {
+                result.push(current)
+                current = [points[i-1], points[i]]
+            } else {
+                break
+            }
         }
-        drawCurve(ctx, pts)
+        i++
     }
+    result.push(current)
+    return result;
 }
 
-function drawLines(ctx, pts) {
-    ctx.moveTo(pts[0], pts[1]);
-    for(i=2;i<pts.length-1;i+=2) {
-        ctx.lineTo(pts[i], pts[i+1]);
-    }
-}
 
-function drawCurve(ctx, ptsa, tension, isClosed, numOfSegments, showPoints) {
 
-    showPoints  = showPoints ? showPoints : false;
+function filterPointsHelper(points, eps, lo, hi, toRemove) {
+    //console.log('filterPointsHelper(lo=%s, hi=%s)', lo, hi)
+    if (lo + 2 >= hi) return;
 
-    ctx.beginPath();
-
-    drawLines(ctx, getCurvePoints(ptsa, tension, isClosed, numOfSegments));
-    ctx.stroke();
-
-    if (showPoints) {
-        ctx.beginPath();
-        for(var i=0;i<ptsa.length-1;i+=2)
-                ctx.rect(ptsa[i] - 2, ptsa[i+1] - 2, 4, 4);
-        ctx.stroke();
-    }
-}
-
-function getCurvePoints(pts, tension, isClosed, numOfSegments) {
-
-    // use input value if provided, or use a default value
-    tension = (typeof tension != 'undefined') ? tension : 0.5;
-    isClosed = isClosed ? isClosed : false;
-    numOfSegments = numOfSegments ? numOfSegments : 16;
-
-    var _pts = [], res = [],    // clone array
-        x, y,           // our x,y coords
-        t1x, t2x, t1y, t2y, // tension vectors
-        c1, c2, c3, c4,     // cardinal points
-        st, t, i;       // steps based on num. of segments
-
-    // clone array so we don't change the original
-    //
-    _pts = pts.slice(0);
-
-    // The algorithm require a previous and next point to the actual point array.
-    // Check if we will draw closed or open curve.
-    // If closed, copy end points to beginning and first points to end
-    // If open, duplicate first points to befinning, end points to end
-    if (isClosed) {
-        _pts.unshift(pts[pts.length - 1]);
-        _pts.unshift(pts[pts.length - 2]);
-        _pts.unshift(pts[pts.length - 1]);
-        _pts.unshift(pts[pts.length - 2]);
-        _pts.push(pts[0]);
-        _pts.push(pts[1]);
-    }
-    else {
-        _pts.unshift(pts[1]);   //copy 1. point and insert at beginning
-        _pts.unshift(pts[0]);
-        _pts.push(pts[pts.length - 2]); //copy last point and append
-        _pts.push(pts[pts.length - 1]);
-    }
-
-    // ok, lets start..
-
-    // 1. loop goes through point array
-    // 2. loop goes through each segment between the 2 pts + 1e point before and after
-    for (i=2; i < (_pts.length - 4); i+=2) {
-        for (t=0; t <= numOfSegments; t++) {
-
-            // calc tension vectors
-            t1x = (_pts[i+2] - _pts[i-2]) * tension;
-            t2x = (_pts[i+4] - _pts[i]) * tension;
-
-            t1y = (_pts[i+3] - _pts[i-1]) * tension;
-            t2y = (_pts[i+5] - _pts[i+1]) * tension;
-
-            // calc step
-            st = t / numOfSegments;
-
-            // calc cardinals
-            c1 =   2 * Math.pow(st, 3)  - 3 * Math.pow(st, 2) + 1;
-            c2 = -(2 * Math.pow(st, 3)) + 3 * Math.pow(st, 2);
-            c3 =       Math.pow(st, 3)  - 2 * Math.pow(st, 2) + st;
-            c4 =       Math.pow(st, 3)  -     Math.pow(st, 2);
-
-            // calc x and y cords with common control vectors
-            x = c1 * _pts[i]    + c2 * _pts[i+2] + c3 * t1x + c4 * t2x;
-            y = c1 * _pts[i+1]  + c2 * _pts[i+3] + c3 * t1y + c4 * t2y;
-
-            //store points in array
-            res.push(x);
-            res.push(y);
-
+    var max_d = -Infinity
+    var max_i = undefined
+    var line = new Line(points[lo], points[hi-1]);
+    for (var i = lo + 1; i < hi - 1; i++) {
+        let d = line.perpDist(points[i])
+        //console.log(d)
+        if (d > max_d) {
+            max_d = d
+            max_i = i
         }
     }
 
-    return res;
+    if (max_d < eps) {
+        for (var i = lo + 1; i < hi - 1; i++) {
+            toRemove[i] = true
+        }
+    } else {
+        console.assert(max_i !== undefined, points, lo, hi)
+        filterPointsHelper(points, eps, lo, max_i + 1, toRemove)
+        filterPointsHelper(points, eps, max_i, hi, toRemove)
+    }
 }
-
-
-//var myPoints = [10,10, 40,30, 100,10, 200, 100, 200, 50, 250, 120];
-
-//drawCurve(ctx, myPoints, 0.5, undefined, undefined, true);
-*/
+function filterPoints(points, eps) {
+    var toRemove = []
+    for (var i = 0; i < points.length; i++) {
+        toRemove.push(false);
+    }
+    filterPointsHelper(points, eps, 0, points.length, toRemove)
+    var result = []
+    for (var i = 0; i < points.length; i++) {
+        if (!toRemove[i]) {
+            result.push(points[i])
+        }
+    }
+    return result
+}
